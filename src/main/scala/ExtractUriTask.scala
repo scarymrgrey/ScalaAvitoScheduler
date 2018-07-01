@@ -11,9 +11,10 @@ import scala.collection.mutable
 
 
 abstract class Task extends Runnable {
-  val host = "mongodb://10.0.0.5:27017/"
+  val host = "mongodb://mongodb:27017/"
   val db = "cars"
-  val dbClient = MongoClient(MongoClientURI(host))(db)
+  val dbClient: MongoDB = MongoClient(MongoClientURI(host))(db)
+  val logs: MongoCollection = MongoClient(MongoClientURI(host))("logs")("exceptions")
 }
 
 case class ExtractUriTask() extends Task {
@@ -45,7 +46,7 @@ case class ExtractUriTask() extends Task {
                 val carMakeCollection = dbClient(car.get("Make").toString)
                 println(s"Adding ${car.get("Model")}...")
                 allItems.foreach(r =>
-                  carMakeCollection.insert(MongoDBObject("Model" -> car.get("Model"), "URI" -> r)))
+                  carMakeCollection.insert(MongoDBObject("Model" -> car.get("Model"), "URI" -> r, "Loaded" -> false)))
 
                 cars.update(MongoDBObject("_id" -> car.get("_id")),
                   $set("Page" -> (car.get("Page").asInstanceOf[Int] + 1)),
