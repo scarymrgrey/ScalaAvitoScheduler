@@ -1,3 +1,5 @@
+import java.util.Calendar
+
 import com.mongodb.DBObject
 import com.mongodb.casbah.Imports._
 import com.mongodb.casbah.commons.MongoDBObject
@@ -11,7 +13,7 @@ import scala.collection.mutable
 
 
 abstract class Task extends Runnable {
-  val host = "mongodb://mongodb:27017/"
+  val host = "mongodb://104.41.225.182:27017/"
   val db = "cars"
   val dbClient: MongoDB = MongoClient(MongoClientURI(host))(db)
   val logs: MongoCollection = MongoClient(MongoClientURI(host))("logs")("exceptions")
@@ -59,10 +61,18 @@ case class ExtractUriTask() extends Task {
                   $set("Complete" -> true),
                   upsert = false,
                   multi = true)
+                logs.insert(MongoDBObject("Message" -> ex.getMessage,
+                  "Task" -> "ExtractInfoFromUriTask",
+                  "Time" -> Calendar.getInstance().getTime,
+                  "Line" -> ex.getStackTrace.head.getLineNumber.toString))
                 println(ex)
               }
               case ex => {
                 continueSeek = false
+                logs.insert(MongoDBObject("Message" -> ex.getMessage,
+                  "Task" -> "ExtractInfoFromUriTask",
+                  "Time" -> Calendar.getInstance().getTime,
+                  "Line" -> ex.getStackTrace.head.getLineNumber.toString))
                 println(ex)
               }
             }

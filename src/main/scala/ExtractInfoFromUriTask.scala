@@ -1,3 +1,5 @@
+import java.util.Calendar
+
 import com.mongodb.casbah.commons.MongoDBObject
 import net.ruippeixotog.scalascraper.browser.JsoupBrowser
 import net.ruippeixotog.scalascraper.dsl.DSL._
@@ -44,9 +46,18 @@ case class ExtractInfoFromUriTask() extends Task {
             upsert = false,
             multi = true)
         } catch {
+          case ex: java.net.ConnectException => {
+            logs.insert(MongoDBObject("Message" -> ex.getMessage,
+              "Task" -> "ExtractInfoFromUriTask",
+              "Time" -> Calendar.getInstance().getTime,
+              "Line" -> ex.getStackTrace.head.getLineNumber.toString))
+            println(ex)
+            return
+          }
           case ex: Throwable => {
             logs.insert(MongoDBObject("Message" -> ex.getMessage,
               "Task" -> "ExtractInfoFromUriTask",
+              "Time" -> Calendar.getInstance().getTime,
               "Line" -> ex.getStackTrace.head.getLineNumber.toString))
             println(ex)
           }
