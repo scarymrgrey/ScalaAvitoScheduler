@@ -10,6 +10,11 @@ import scala.io.Source
 
 case class ExtractInfoFromUriTask() extends Task {
   override def run(): Unit = {
+    try {
+      Source.fromURL("https://www.avito.ru/rossiya?verifyUserLocation=1")
+    } catch {
+      case a: Throwable => println(a)
+    }
     val browser = JsoupBrowser()
     browser.clearCookies()
     val cars = dbClient("cars")
@@ -20,10 +25,20 @@ case class ExtractInfoFromUriTask() extends Task {
       allItems.foreach(z => {
         try {
           val url = z.get("URI").toString
-          val car2 = Source.fromURL(s"https://avito.ru$url").mkString
-          val car = browser.parseString(car2)
-          val price = (car >> elementList("span.js-item-price").map(_.headOption.fold("0")(_.innerHtml)))
+          val d = Source.fromURL(s"https://avito.ru$url").mkString
+
+            if (d.contains("Доступ временно заблокирован"))
+              throw new Exception("Blocked")
+
+          val car = browser
+            .parseString(d)
+          val price = (car >> elementList("span.js-item-price")
+            .map(_.headOption.fold("-1")(_.innerHtml)))
             .replace(" ", "").toInt
+
+          if (price == -1)
+            throw new Exception("Blocked: Price = -1")
+
           val items = car >> elementList("li.item-params-list-item")
           val res = items.map(x => {
             val span = x >> elementList(".item-params-label")
@@ -32,6 +47,7 @@ case class ExtractInfoFromUriTask() extends Task {
             (key.filterNot(toRemove), value.filterNot(toRemove))
           }).filter({ case (key, value) => !(key contains "VIN") })
             .toArray
+
           val objToUpdate = MongoDBObject.newBuilder
           objToUpdate += "Model" -> z.get("Model")
           objToUpdate += "URI" -> z.get("URI")
@@ -45,21 +61,15 @@ case class ExtractInfoFromUriTask() extends Task {
             objToUpdate.result(),
             upsert = false,
             multi = true)
+
         } catch {
-          case ex: java.net.ConnectException => {
-            logs.insert(MongoDBObject("Message" -> ex.getMessage,
-              "Task" -> "ExtractInfoFromUriTask",
-              "Time" -> Calendar.getInstance().getTime,
-              "Line" -> ex.getStackTrace.head.getLineNumber.toString))
-            println(ex)
-            return
-          }
           case ex: Throwable => {
             logs.insert(MongoDBObject("Message" -> ex.getMessage,
               "Task" -> "ExtractInfoFromUriTask",
               "Time" -> Calendar.getInstance().getTime,
               "Line" -> ex.getStackTrace.head.getLineNumber.toString))
             println(ex)
+            return
           }
         }
       })

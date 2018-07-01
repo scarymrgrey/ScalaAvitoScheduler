@@ -4,8 +4,6 @@ import scala.concurrent.duration._
 
 
 object Main extends App {
-  //ExtractUriTask().run()
-  //ExtractInfoFromUriTask().run()
 
   println("Starting Tasks...")
 

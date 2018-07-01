@@ -1,3 +1,4 @@
+import java.io.FileNotFoundException
 import java.util.Calendar
 
 import com.mongodb.DBObject
@@ -7,9 +8,8 @@ import com.mongodb.casbah.{MongoClient, MongoClientURI}
 import net.ruippeixotog.scalascraper.browser.JsoupBrowser
 import net.ruippeixotog.scalascraper.dsl.DSL._
 import net.ruippeixotog.scalascraper.scraper.ContentExtractors.elementList
-import org.jsoup.HttpStatusException
 
-import scala.collection.mutable
+import scala.io.Source
 
 
 abstract class Task extends Runnable {
@@ -24,7 +24,6 @@ case class ExtractUriTask() extends Task {
     val browser = JsoupBrowser()
     browser.clearCookies()
     var continueSeek = true
-    var allItems = new mutable.ListBuffer[String]
     val cars = dbClient("cars")
     while (continueSeek) {
       cars.findOne(MongoDBObject("Complete" -> false))
@@ -33,30 +32,33 @@ case class ExtractUriTask() extends Task {
         }) {
           car: DBObject =>
             try {
-              val doc = browser
-                .get(s"https://www.avito.ru/moskva/avtomobili/s_probegom/${car.get("Make")}/${car.get("Model")}" +
-                  s"?view=list&radius=0&p=${car.get("Page")}")
+              try {
+                Source.fromURL("https://www.avito.ru/belarus?verifyUserLocation=1")
+              } catch {
+                case a: Throwable => println(a)
+              }
+
+              val d2 = Source.fromURL(s"https://www.avito.ru/moskva/avtomobili/s_probegom/${car.get("Make")}/${car.get("Model")}" +
+                s"?view=list&radius=0&p=${car.get("Page")}").mkString
+              val doc = browser.parseString(d2)
               val items = doc >> elementList(".item.item_list.js-catalog-item-enum.item_car a.description-title-link")
 
-              if (items.isEmpty) {
-                cars.update(MongoDBObject("_id" -> car.get("_id")),
-                  $set("Complete" -> true),
-                  upsert = false,
-                  multi = true)
-              } else {
-                allItems ++= items.map(r => r.attr("href")).distinct
-                val carMakeCollection = dbClient(car.get("Make").toString)
-                println(s"Adding ${car.get("Model")}...")
-                allItems.foreach(r =>
+              if (d2.contains("Доступ временно заблокирован") || items.isEmpty)
+                throw new Exception("Blocked")
+
+              val carMakeCollection = dbClient(car.get("Make").toString)
+              items.map(_.attr("href"))
+                .distinct
+                .foreach(r =>
                   carMakeCollection.insert(MongoDBObject("Model" -> car.get("Model"), "URI" -> r, "Loaded" -> false)))
 
-                cars.update(MongoDBObject("_id" -> car.get("_id")),
-                  $set("Page" -> (car.get("Page").asInstanceOf[Int] + 1)),
-                  upsert = false,
-                  multi = true)
-              }
+              cars.update(MongoDBObject("_id" -> car.get("_id")),
+                $set("Page" -> (car.get("Page").asInstanceOf[Int] + 1)),
+                upsert = false,
+                multi = true)
+
             } catch {
-              case ex: HttpStatusException if ex.getStatusCode == 404 => {
+              case ex: FileNotFoundException => {
                 cars.update(MongoDBObject("_id" -> car.get("_id")),
                   $set("Complete" -> true),
                   upsert = false,
