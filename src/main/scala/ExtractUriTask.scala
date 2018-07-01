@@ -13,7 +13,7 @@ import scala.collection.mutable
 
 
 abstract class Task extends Runnable {
-  val host = "mongodb://104.41.225.182:27017/"
+  val host = "mongodb://mongodb:27017/"
   val db = "cars"
   val dbClient: MongoDB = MongoClient(MongoClientURI(host))(db)
   val logs: MongoCollection = MongoClient(MongoClientURI(host))("logs")("exceptions")

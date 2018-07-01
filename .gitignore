@@ -6,3 +6,4 @@ project/target/scala-2.12/sbt-1.0/
 project/target/streams/
 target/scala-2.12/classes/
 target/scala-2.12/resolution-cache/
+.idea/workspace.xml
