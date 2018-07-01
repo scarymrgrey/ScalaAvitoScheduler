@@ -43,6 +43,7 @@ case class ExtractUriTask() extends Task {
               } else {
                 allItems ++= items.map(r => r.attr("href")).distinct
                 val carMakeCollection = dbClient(car.get("Make").toString)
+                println(s"Adding ${car.get("Model")}...")
                 allItems.foreach(r =>
                   carMakeCollection.insert(MongoDBObject("Model" -> car.get("Model"), "URI" -> r)))
 
