@@ -63,7 +63,7 @@ case class ExtractInfoFromUriTask() extends Task {
                   val value = key match {
                     case "Пробег" | "Годвыпуска" =>
                       strValue.replace(" ", "").replace("км", "").toInt
-                    case "Объёмдвигателя" => strValue.replace("л+", "").toDouble
+                    case "Объёмдвигателя" => strValue.filterNot("л+ ".toSet).replace(",",".").toDouble
                     case "Мощностьдвигателя" => strValue.filterNot("лс. c+".toSet).toInt
                     case _ => strValue
                   }
