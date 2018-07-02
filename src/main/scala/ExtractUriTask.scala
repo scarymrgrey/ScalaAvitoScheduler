@@ -63,8 +63,6 @@ case class ExtractUriTask() extends Task {
               if (d2.code != 200 || items.isEmpty)
                 throw new Exception(s"Blocked : Http ${d2.code}")
 
-
-
               val carMakeCollection = dbClient(car.get("Make").toString)
               items.map(_.attr("href"))
                 .distinct
@@ -87,7 +85,7 @@ case class ExtractUriTask() extends Task {
               case ex => {
                 continueSeek = false
                 logs.insert(MongoDBObject("Message" -> ex.getMessage,
-                  "Task" -> "ExtractInfoFromUriTask",
+                  "Task" -> "ExtractUriTask",
                   "Time" -> Calendar.getInstance().getTime,
                   "Line" -> ex.getStackTrace.head.getLineNumber.toString))
                 println(ex)
