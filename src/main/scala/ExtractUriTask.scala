@@ -14,7 +14,7 @@ import scala.io.Source
 
 
 abstract class Task extends Runnable {
-  val host = "mongodb://104.41.225.182:27017/"
+  val host = "mongodb://mongodb:27017/"
   val db = "cars"
   val dbClient: MongoDB = MongoClient(MongoClientURI(host))(db)
   val logs: MongoCollection = MongoClient(MongoClientURI(host))("logs")("exceptions")
@@ -66,6 +66,9 @@ case class ExtractUriTask() extends Task {
               if (d2.code != 200 || d2.body.contains("Доступ временно заблокирован") || items.isEmpty)
                 throw new Exception("Blocked")
 
+              if(d2.code == 404)
+                throw new FileNotFoundException
+
               val carMakeCollection = dbClient(car.get("Make").toString)
               items.map(_.attr("href"))
                 .distinct
@@ -83,10 +86,6 @@ case class ExtractUriTask() extends Task {
                   $set("Complete" -> true),
                   upsert = false,
                   multi = true)
-                logs.insert(MongoDBObject("Message" -> ex.getMessage,
-                  "Task" -> "ExtractInfoFromUriTask",
-                  "Time" -> Calendar.getInstance().getTime,
-                  "Line" -> ex.getStackTrace.head.getLineNumber.toString))
                 println(ex)
               }
               case ex => {
