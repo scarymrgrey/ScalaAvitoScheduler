@@ -5,7 +5,6 @@ import net.ruippeixotog.scalascraper.browser.JsoupBrowser
 import net.ruippeixotog.scalascraper.dsl.DSL._
 import net.ruippeixotog.scalascraper.model.TextNode
 import net.ruippeixotog.scalascraper.scraper.ContentExtractors.elementList
-import scalaj.http.{Http, HttpResponse}
 
 
 case class ExtractInfoFromUriTask() extends Task {
@@ -21,8 +20,9 @@ case class ExtractInfoFromUriTask() extends Task {
       val allItems = currentCarCollection.find(MongoDBObject("Loaded" -> false))
       val toRemove = ": ".toSet
       allItems.foreach(z => {
+
+        val url = z.get("URI").toString
         try {
-          val url = z.get("URI").toString
           val d = getRestContent(s"https://www.avito.ru$url")
 
           if (d.Code != 200 || d.Body.contains("Доступ временно заблокирован"))
@@ -65,7 +65,8 @@ case class ExtractInfoFromUriTask() extends Task {
             logs.insert(MongoDBObject("Message" -> ex.getMessage,
               "Task" -> "ExtractInfoFromUriTask",
               "Time" -> Calendar.getInstance().getTime,
-              "Line" -> ex.getStackTrace.head.getLineNumber.toString))
+              "Line" -> ex.getStackTrace.head.getLineNumber.toString,
+              "URL" -> url))
             println(ex)
             return
           }
