@@ -25,11 +25,11 @@ case class ExtractInfoFromUriTask() extends Task {
           val url = z.get("URI").toString
           val d = getRestContent(s"https://www.avito.ru$url")
 
-          if (d.code != 200 || d.body.contains("Доступ временно заблокирован"))
+          if (d.Code != 200 || d.Body.contains("Доступ временно заблокирован"))
             throw new Exception("Blocked")
 
           val car = browser
-            .parseString(d.body)
+            .parseString(d.Body)
           val price = (car >> elementList("span.js-item-price")
             .map(_.headOption.fold("-1")(_.innerHtml)))
             .replace(" ", "").toInt
