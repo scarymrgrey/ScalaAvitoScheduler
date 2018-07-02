@@ -1,3 +1,4 @@
+import java.net.SocketTimeoutException
 import java.util.Calendar
 
 import com.mongodb.casbah.commons.MongoDBObject
@@ -88,6 +89,12 @@ case class ExtractInfoFromUriTask() extends Task {
               }
             }
           } catch {
+            case ex : SocketTimeoutException => println(ex)
+              logs.insert(MongoDBObject("Message" -> ex.getMessage,
+                "Task" -> "ExtractInfoFromUriTask",
+                "Time" -> Calendar.getInstance().getTime,
+                "Line" -> ex.getStackTrace.head.getLineNumber.toString,
+                "URL" -> url))
             case ex: Throwable => {
               logs.insert(MongoDBObject("Message" -> ex.getMessage,
                 "Task" -> "ExtractInfoFromUriTask",
