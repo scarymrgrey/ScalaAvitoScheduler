@@ -5,18 +5,16 @@ import net.ruippeixotog.scalascraper.browser.JsoupBrowser
 import net.ruippeixotog.scalascraper.dsl.DSL._
 import net.ruippeixotog.scalascraper.model.TextNode
 import net.ruippeixotog.scalascraper.scraper.ContentExtractors.elementList
+import scalaj.http.{Http, HttpResponse}
 
-import scala.io.Source
 
 case class ExtractInfoFromUriTask() extends Task {
+
   override def run(): Unit = {
-    try {
-      Source.fromURL("https://www.avito.ru/rossiya?verifyUserLocation=1")
-    } catch {
-      case a: Throwable => println(a)
-    }
+
     val browser = JsoupBrowser()
     browser.clearCookies()
+
     val cars = dbClient("cars")
     cars.foreach { r =>
       val currentCarCollection = dbClient(r.get("Make").toString)
@@ -25,13 +23,13 @@ case class ExtractInfoFromUriTask() extends Task {
       allItems.foreach(z => {
         try {
           val url = z.get("URI").toString
-          val d = Source.fromURL(s"https://avito.ru$url").mkString
+          val d = getRestContent(s"https://www.avito.ru$url")
 
-            if (d.contains("Доступ временно заблокирован"))
-              throw new Exception("Blocked")
+          if (d.code != 200 || d.body.contains("Доступ временно заблокирован"))
+            throw new Exception("Blocked")
 
           val car = browser
-            .parseString(d)
+            .parseString(d.body)
           val price = (car >> elementList("span.js-item-price")
             .map(_.headOption.fold("-1")(_.innerHtml)))
             .replace(" ", "").toInt

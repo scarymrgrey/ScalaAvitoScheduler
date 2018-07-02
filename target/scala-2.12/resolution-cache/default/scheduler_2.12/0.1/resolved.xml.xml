@@ -4,7 +4,7 @@
 		module="scheduler_2.12"
 		revision="0.1"
 		status="integration"
-		publication="20180701015707"
+		publication="20180702032227"
 	>
 		<description>
 		Scheduler
@@ -43,5 +43,6 @@
 		<dependency org="ch.qos.logback" name="logback-classic" rev="1.2.1" conf="compile->default(compile)"/>
 		<dependency org="com.typesafe.play" name="anorm_2.12" rev="2.5.3" conf="compile->default(compile)"/>
 		<dependency org="org.mongodb" name="casbah_2.12" rev="3.1.1" conf="compile->default(compile)"/>
+		<dependency org="org.scalaj" name="scalaj-http_2.12" rev="2.4.0" conf="compile->default(compile)"/>
 	</dependencies>
 </ivy-module>

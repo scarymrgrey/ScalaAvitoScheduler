@@ -21,3 +21,4 @@ libraryDependencies ++= Seq(
   "com.typesafe.play" %% "anorm" % "2.5.3",
   "org.mongodb" %% "casbah" % "3.1.1"
 )
+libraryDependencies +=  "org.scalaj" %% "scalaj-http" % "2.4.0"
