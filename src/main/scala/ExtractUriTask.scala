@@ -10,7 +10,7 @@ import net.ruippeixotog.scalascraper.dsl.DSL._
 import net.ruippeixotog.scalascraper.scraper.ContentExtractors.elementList
 import scalaj.http.Http
 
-case class Response(Body: String, Code: Int)
+case class Response(Body: String, Code: Int, Location: Option[String])
 
 abstract class Task extends Runnable {
   val host = "mongodb://10.0.0.5:27017/"
@@ -34,13 +34,15 @@ abstract class Task extends Runnable {
     )
     val req = request.headers(headers)
     val resp = req.asString
-    if (resp.code == 200 || resp.code == 404)
-      return Response(resp.body, resp.code)
+
+    val location = resp.header("location").getOrElse(resp.location.getOrElse(""))
+    if (Array(301,302, 200, 404).contains(resp.code) && !location.contains("blocked"))
+      return Response(resp.body, resp.code, resp.location)
 
     val browser = JsoupBrowser()
     browser.clearCookies()
     val browserResp = browser.get(url)
-    Response(browserResp.body.toString, 200)
+    Response(browserResp.body.toString, 200, Some(browserResp.location))
   }
 }
 
@@ -57,29 +59,32 @@ case class ExtractUriTask() extends Task {
         }) {
           car: DBObject =>
             try {
-              val d2 = getRestContent(s"https://www.avito.ru/moskva/avtomobili/s_probegom/${car.get("Make")}/${car.get("Model")}" +
-                s"?view=list&radius=0&p=${car.get("Page")}")
+              val pageStr = car.get("Page").toString
+              val page = pageStr match {case "0"=> "" case a => s"&p=$a"}
+              val response = getRestContent(s"https://www.avito.ru/rossiya/avtomobili/${car.get("Make")}/${car.get("Model")}" +
+                s"?view=list$page")
 
-              val doc = browser.parseString(d2.Body)
+              val doc = browser.parseString(response.Body)
               val items = doc >> elementList(".item.item_list.js-catalog-item-enum.item_car a.description-title-link")
 
-              if (d2.Code == 404)
-                throw new FileNotFoundException
+              response.Code match {
+                case 404 => throw new FileNotFoundException
+                case 200 if items.nonEmpty => {
+                  val carMakeCollection = dbClient(car.get("Make").toString)
+                  items.map(_.attr("href"))
+                    .distinct
+                    .foreach(r =>
+                      carMakeCollection.update(MongoDBObject("URI" -> r),
+                        MongoDBObject("Model" -> car.get("Model"), "URI" -> r, "Loaded" -> false),
+                        upsert = true))
 
-              if (d2.Code != 200 || items.isEmpty)
-                throw new Exception(s"Blocked : Http ${d2.Code}")
-
-              val carMakeCollection = dbClient(car.get("Make").toString)
-              items.map(_.attr("href"))
-                .distinct
-                .foreach(r =>
-                  carMakeCollection.insert(MongoDBObject("Model" -> car.get("Model"), "URI" -> r, "Loaded" -> false)))
-
-              cars.update(MongoDBObject("_id" -> car.get("_id")),
-                $set("Page" -> (car.get("Page").asInstanceOf[Int] + 1)),
-                upsert = false,
-                multi = true)
-
+                  cars.update(MongoDBObject("_id" -> car.get("_id")),
+                    $set("Page" -> (car.get("Page").asInstanceOf[Int] + 1)),
+                    upsert = false,
+                    multi = true)
+                }
+                case _ => throw new Exception(s"Blocked : Http ${response.Code}")
+              }
             } catch {
               case ex: FileNotFoundException => {
                 cars.update(MongoDBObject("_id" -> car.get("_id")),
