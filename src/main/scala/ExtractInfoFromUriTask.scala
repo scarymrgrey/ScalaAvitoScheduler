@@ -63,7 +63,7 @@ case class ExtractInfoFromUriTask() extends Task {
                   val strValue = x.childNodes.last.asInstanceOf[TextNode].content.filterNot(toRemove)
                   val value = key match {
                     case "Пробег" | "Годвыпуска" =>
-                      strValue.replace(" ", "").replace("км", "").toInt
+                      strValue.replaceAll("[^0-9]", "").toInt
                     case "Объёмдвигателя" => strValue.filterNot("л+ ".toSet).replace(",",".").toDouble
                     case "Мощностьдвигателя" => strValue.filterNot("лс. c+".toSet).toInt
                     case _ => strValue
@@ -90,11 +90,6 @@ case class ExtractInfoFromUriTask() extends Task {
             }
           } catch {
             case ex : SocketTimeoutException => println(ex)
-              logs.insert(MongoDBObject("Message" -> ex.getMessage,
-                "Task" -> "ExtractInfoFromUriTask",
-                "Time" -> Calendar.getInstance().getTime,
-                "Line" -> ex.getStackTrace.head.getLineNumber.toString,
-                "URL" -> url))
             case ex: Throwable => {
               logs.insert(MongoDBObject("Message" -> ex.getMessage,
                 "Task" -> "ExtractInfoFromUriTask",
