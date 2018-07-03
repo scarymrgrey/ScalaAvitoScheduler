@@ -26,7 +26,7 @@ case class ExtractInfoFromUriTask() extends Task {
         val currentCarCollection = dbClient(carMake)
         val allItems = currentCarCollection.find(MongoDBObject("Loaded" -> false))
         val toRemove = ": ".toSet
-        allItems.foreach { z => {
+        allItems.foreach { z =>
 
           val url = z.get("URI").toString
           try {
@@ -104,7 +104,6 @@ case class ExtractInfoFromUriTask() extends Task {
               return
             }
           }
-        }
         }
       }
   }
