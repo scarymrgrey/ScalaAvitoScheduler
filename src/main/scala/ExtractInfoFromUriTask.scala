@@ -51,45 +51,49 @@ case class ExtractInfoFromUriTask() extends Task {
                   .map(_.headOption.fold("-1")(_.innerHtml)))
                   .replace(" ", "").toInt
 
-                if (price == -1)
-                  throw new Exception("Blocked: Price = -1")
+                if (price != -1) {
+                  val address = url.split("/")(1)
 
-                val address = url.split("/")(1)
+                  val items = car >> elementList("li.item-params-list-item")
+                  val res = items.map(x => {
+                    val span = x >> elementList(".item-params-label")
+                    val key = span.head.innerHtml.filterNot(toRemove)
+                    val strValue = x.childNodes.last.asInstanceOf[TextNode].content.filterNot(toRemove)
+                    val value = key match {
+                      case "Пробег" | "Годвыпуска" =>
+                        strValue.replaceAll("[^0-9]", "").toInt
+                      case "Объёмдвигателя" => strValue.filterNot("л+ ".toSet).replace(",", ".").toDouble
+                      case "Мощностьдвигателя" => strValue.filterNot("лс. c+".toSet).toInt
+                      case _ => strValue
+                    }
+                    (key, value)
+                  }).filter({ case (key, value) => !(key contains "VIN") })
+                    .toArray
 
-                val items = car >> elementList("li.item-params-list-item")
-                val res = items.map(x => {
-                  val span = x >> elementList(".item-params-label")
-                  val key = span.head.innerHtml.filterNot(toRemove)
-                  val strValue = x.childNodes.last.asInstanceOf[TextNode].content.filterNot(toRemove)
-                  val value = key match {
-                    case "Пробег" | "Годвыпуска" =>
-                      strValue.replaceAll("[^0-9]", "").toInt
-                    case "Объёмдвигателя" => strValue.filterNot("л+ ".toSet).replace(",",".").toDouble
-                    case "Мощностьдвигателя" => strValue.filterNot("лс. c+".toSet).toInt
-                    case _ => strValue
+                  val objToUpdate = MongoDBObject.newBuilder
+                  objToUpdate += "Model" -> z.get("Model")
+                  objToUpdate += "URI" -> z.get("URI")
+                  objToUpdate += "Loaded" -> true
+                  objToUpdate += "Price" -> price
+                  objToUpdate += "Address" -> address
+                  res.foreach { obj =>
+                    objToUpdate += obj._1 -> obj._2
                   }
-                  (key, value)
-                }).filter({ case (key, value) => !(key contains "VIN") })
-                  .toArray
-
-                val objToUpdate = MongoDBObject.newBuilder
-                objToUpdate += "Model" -> z.get("Model")
-                objToUpdate += "URI" -> z.get("URI")
-                objToUpdate += "Loaded" -> true
-                objToUpdate += "Price" -> price
-                objToUpdate += "Address" -> address
-                res.foreach { obj =>
-                  objToUpdate += obj._1 -> obj._2
+                  currentCarCollection.update(MongoDBObject("_id" -> z.get("_id")),
+                    objToUpdate.result(),
+                    upsert = false,
+                    multi = true)
+                } else {
+                  currentCarCollection.findAndRemove(MongoDBObject("_id" -> z.get("_id")))
+                  logs.insert(MongoDBObject("Message" -> "Removed",
+                    "Task" -> "ExtractInfoFromUriTask",
+                    "Time" -> Calendar.getInstance().getTime,
+                    "URL" -> url))
                 }
-
-                currentCarCollection.update(MongoDBObject("_id" -> z.get("_id")),
-                  objToUpdate.result(),
-                  upsert = false,
-                  multi = true)
               }
             }
           } catch {
-            case ex : SocketTimeoutException => println(ex)
+            case ex: SocketTimeoutException => println(ex)
             case ex: Throwable => {
               logs.insert(MongoDBObject("Message" -> ex.getMessage,
                 "Task" -> "ExtractInfoFromUriTask",
