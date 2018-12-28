@@ -5,8 +5,15 @@
     <option name="customVMPath" value="C:/Program Files/Java/jdk1.8.0_171" />
     <option name="linkedExternalProjectsSettings">
       <SbtProjectSettings>
-        <option name="externalProjectPath" value="C:\Users\Scary\Documents\Scheduler" />
+        <option name="externalProjectPath" value="$USER_HOME$/Documents/Scheduler" />
+        <option name="modules">
+          <set>
+            <option value="$USER_HOME$/Documents/Scheduler" />
+            <option value="$USER_HOME$/Documents/Scheduler/project" />
+          </set>
+        </option>
         <option name="resolveSbtClassifiers" value="true" />
+        <option name="sbtVersion" value="1.1.6" />
         <option name="useAutoImport" value="true" />
       </SbtProjectSettings>
     </option>

@@ -13,7 +13,7 @@ import scalaj.http.Http
 case class Response(Body: String, Code: Int, Location: Option[String])
 
 abstract class Task extends Runnable {
-  val host = "mongodb://10.0.0.5:27017/"
+  val host = "mongodb://localhost:27017/"
   val db = "cars"
   val dbClient: MongoDB = MongoClient(MongoClientURI(host))(db)
   val logs: MongoCollection = MongoClient(MongoClientURI(host))("logs")("exceptions")
